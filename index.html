@@ -89,6 +89,34 @@
       line-height: 1;
     }
 
+    .progress-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .progress-cell {
+      min-width: 0;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      background: #111821;
+    }
+
+    .progress-label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.1;
+    }
+
+    .progress-value {
+      display: block;
+      margin-top: 3px;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
     .side {
       height: 100vh;
       min-height: 0;
@@ -298,7 +326,7 @@
       .app {
         height: 100svh;
         grid-template-columns: 1fr;
-        grid-template-rows: 43svh minmax(0, 1fr);
+        grid-template-rows: minmax(260px, 45svh) minmax(0, 1fr);
       }
 
       .stage {
@@ -324,16 +352,28 @@
 
       .side {
         height: auto;
-        grid-template-rows: auto auto auto minmax(0, 1fr);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, .95fr);
         border-left: 0;
         border-top: 1px solid rgba(244, 247, 251, .14);
         padding: 6px;
         gap: 5px;
+        overflow: hidden;
       }
 
       .title,
-      .actions,
-      .side > .panel:nth-of-type(5) {
+      .status,
+      .help-text,
+      .actions {
+        grid-column: 1 / -1;
+      }
+
+      .romaji-answer {
+        grid-column: 2;
+        grid-row: 3 / span 4;
+      }
+
+      .side > .panel:nth-of-type(6) {
         display: none;
       }
 
@@ -348,6 +388,22 @@
 
       .panel {
         padding: 6px;
+      }
+
+      .progress-grid {
+        gap: 4px;
+      }
+
+      .progress-cell {
+        padding: 5px 6px;
+      }
+
+      .progress-label {
+        font-size: 9px;
+      }
+
+      .progress-value {
+        font-size: 14px;
       }
 
       .panel-title {
@@ -384,7 +440,7 @@
       .keys {
         grid-column: 1;
         grid-row: 2;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 5px;
       }
 
@@ -399,6 +455,124 @@
         min-height: 100%;
         writing-mode: vertical-rl;
         font-size: 18px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .app {
+        height: 100svh;
+        min-height: 100svh;
+        grid-template-rows: 42svh minmax(0, 1fr);
+      }
+
+      .stage {
+        padding: 6px;
+      }
+
+      .hud {
+        gap: 4px;
+        margin-top: 4px;
+      }
+
+      .hud-pill {
+        padding: 4px 5px;
+      }
+
+      .hud-label {
+        font-size: 9px;
+      }
+
+      .hud-value {
+        font-size: 15px;
+      }
+
+      .side {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto minmax(0, 1fr);
+        gap: 5px;
+        padding: 5px;
+      }
+
+      .title,
+      .help-text,
+      .actions,
+      .side > .panel:nth-of-type(6) {
+        display: none;
+      }
+
+      .status,
+      .romaji-answer {
+        grid-column: auto;
+        grid-row: auto;
+      }
+
+      .status {
+        font-size: 11px;
+        line-height: 1.2;
+      }
+
+      .panel {
+        padding: 5px;
+      }
+
+      .panel-title {
+        margin-bottom: 3px;
+        font-size: 10px;
+      }
+
+      .select-control,
+      .choice-button {
+        min-height: 28px;
+        font-size: 12px;
+      }
+
+      .choice-grid {
+        gap: 4px;
+      }
+
+      .romaji-answer {
+        grid-template-columns: minmax(0, 1fr) 68px;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 4px;
+      }
+
+      .romaji-answer .panel-title {
+        display: none;
+      }
+
+      .input-display {
+        min-height: 28px;
+        font-size: 19px;
+      }
+
+      .keys {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 4px;
+      }
+
+      .key {
+        min-height: 24px;
+        font-size: 12px;
+        border-radius: 6px;
+      }
+
+      .fire-button {
+        min-height: 100%;
+        font-size: 16px;
+      }
+
+      .dialog {
+        width: min(360px, calc(100vw - 28px));
+        padding: 12px;
+      }
+
+      .dialog h2 {
+        font-size: 24px;
+      }
+
+      .dialog p {
+        margin-bottom: 10px;
+        font-size: 14px;
       }
     }
   </style>
@@ -417,7 +591,7 @@
           <span class="hud-value" id="streak">0</span>
         </div>
         <div class="hud-pill">
-          <span class="hud-label" id="goalLabel">もんだい</span>
+          <span class="hud-label" id="goalLabel">いま</span>
           <span class="hud-value" id="progress">0/0</span>
         </div>
         <div class="hud-pill">
@@ -441,6 +615,28 @@
       </div>
       <div class="status" id="status">モードを選んでスタートしてください。</div>
       <div class="help-text">キーボードでローマ字を入力し、Enterキーを押しましょう。スマホでは画面のキーと発射ボタンを使えます。</div>
+
+      <section class="panel" aria-labelledby="progress-title">
+        <p class="panel-title" id="progress-title">進行状況</p>
+        <div class="progress-grid">
+          <div class="progress-cell">
+            <span class="progress-label">スコア</span>
+            <span class="progress-value" id="sideScore">0</span>
+          </div>
+          <div class="progress-cell">
+            <span class="progress-label">れんぞく</span>
+            <span class="progress-value" id="sideStreak">0</span>
+          </div>
+          <div class="progress-cell">
+            <span class="progress-label" id="sideGoalLabel">いま</span>
+            <span class="progress-value" id="sideProgress">0/0</span>
+          </div>
+          <div class="progress-cell">
+            <span class="progress-label">せいかい</span>
+            <span class="progress-value" id="sideAccuracy">0%</span>
+          </div>
+        </div>
+      </section>
 
       <section class="panel" aria-labelledby="mode-title">
         <p class="panel-title" id="mode-title">モード</p>
@@ -501,8 +697,14 @@
     const ctx = canvas.getContext("2d");
     const scoreEl = document.getElementById("score");
     const streakEl = document.getElementById("streak");
+    const goalLabelEl = document.getElementById("goalLabel");
     const progressEl = document.getElementById("progress");
     const accuracyEl = document.getElementById("accuracy");
+    const sideScoreEl = document.getElementById("sideScore");
+    const sideStreakEl = document.getElementById("sideStreak");
+    const sideGoalLabelEl = document.getElementById("sideGoalLabel");
+    const sideProgressEl = document.getElementById("sideProgress");
+    const sideAccuracyEl = document.getElementById("sideAccuracy");
     const inputDisplay = document.getElementById("inputDisplay");
     const statusEl = document.getElementById("status");
     const messageEl = document.getElementById("message");
@@ -671,8 +873,16 @@
     function updateHud() {
       scoreEl.textContent = state.score;
       streakEl.textContent = state.streak;
-      progressEl.textContent = state.questionLimit ? `${state.total}/${state.questionLimit}` : `${state.total}`;
+      const nextQuestion = state.running && !state.gameOver && state.enemy ? state.total + 1 : state.total;
+      const currentQuestion = state.questionLimit ? Math.min(nextQuestion, state.questionLimit) : nextQuestion;
+      goalLabelEl.textContent = state.questionLimit ? "いま" : "解いた数";
+      progressEl.textContent = state.questionLimit ? `${currentQuestion}/${state.questionLimit}` : `${state.total}`;
       accuracyEl.textContent = state.total ? `${Math.round(state.correct / state.total * 100)}%` : "0%";
+      sideScoreEl.textContent = scoreEl.textContent;
+      sideStreakEl.textContent = streakEl.textContent;
+      sideGoalLabelEl.textContent = goalLabelEl.textContent;
+      sideProgressEl.textContent = progressEl.textContent;
+      sideAccuracyEl.textContent = accuracyEl.textContent;
     }
 
     function updateInput() {
