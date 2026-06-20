@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ローマ字シューティング</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10141c;
+      --panel: #18202b;
+      --panel-2: #202b38;
+      --line: #354456;
+      --text: #f4f7fb;
+      --muted: #aebacc;
+      --accent: #20b7a8;
+      --gold: #ffcf5a;
+      --danger: #ff6666;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) 360px;
+      background:
+        radial-gradient(circle at 28% 14%, rgba(32, 183, 168, .14), transparent 24rem),
+        linear-gradient(180deg, #11182a, #27364b);
+    }
+
+    .stage {
+      position: relative;
+      min-height: 0;
+      padding: 10px;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: block;
+      border: 1px solid rgba(244, 247, 251, .14);
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .hud-pill {
+      padding: 8px 10px;
+      border: 1px solid rgba(244, 247, 251, .18);
+      background: rgba(16, 20, 28, .72);
+    }
+
+    .hud-label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.1;
+    }
+
+    .hud-value {
+      display: block;
+      margin-top: 2px;
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .side {
+      height: 100vh;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 10px;
+      border-left: 1px solid rgba(244, 247, 251, .14);
+      background: rgba(16, 20, 28, .84);
+      overflow: hidden;
+    }
+
+    .title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .help-text {
+      margin-top: -4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .panel {
+      border: 1px solid rgba(244, 247, 251, .14);
+      background: var(--panel);
+      padding: 10px;
+    }
+
+    .panel-title {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .select-control {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #111821;
+      color: var(--text);
+      padding: 0 10px;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .choice-button {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 900;
+    }
+
+    .choice-button.active {
+      border-color: var(--accent);
+      background: rgba(32, 183, 168, .24);
+      box-shadow: inset 0 0 0 1px rgba(32, 183, 168, .28);
+    }
+
+    .input-display {
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #0d1219;
+      font-size: 30px;
+      font-weight: 900;
+      overflow: hidden;
+    }
+
+    .input-display.empty {
+      color: #526073;
+    }
+
+    .romaji-answer {
+      display: grid;
+      gap: 8px;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .key,
+    .small-button,
+    .fire-button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 900;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+
+    .key:hover,
+    .small-button:hover,
+    .fire-button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(244, 247, 251, .34);
+    }
+
+    .key.utility {
+      color: var(--gold);
+    }
+
+    .fire-button {
+      min-height: 50px;
+      border-color: rgba(255, 207, 90, .5);
+      background: #5c4212;
+      color: #fff3cd;
+      font-size: 20px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .message {
+      min-height: 0;
+      overflow: auto;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .message strong {
+      color: var(--text);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(16, 20, 28, .68);
+      backdrop-filter: blur(5px);
+    }
+
+    .overlay[hidden] {
+      display: none;
+    }
+
+    .dialog {
+      width: min(430px, calc(100vw - 40px));
+      border: 1px solid rgba(244, 247, 251, .18);
+      background: rgba(24, 32, 43, .96);
+      padding: 18px;
+      text-align: center;
+    }
+
+    .dialog.master {
+      border-color: rgba(255, 207, 90, .6);
+      box-shadow: 0 0 0 1px rgba(255, 207, 90, .2), 0 18px 60px rgba(0, 0, 0, .36);
+    }
+
+    .dialog h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .dialog p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    @media (max-width: 860px) {
+      body {
+        overflow: hidden;
+      }
+
+      .app {
+        height: 100svh;
+        grid-template-columns: 1fr;
+        grid-template-rows: 43svh minmax(0, 1fr);
+      }
+
+      .stage {
+        padding: 6px;
+      }
+
+      .hud {
+        gap: 5px;
+        margin-top: 5px;
+      }
+
+      .hud-pill {
+        padding: 5px 7px;
+      }
+
+      .hud-label {
+        font-size: 10px;
+      }
+
+      .hud-value {
+        font-size: 17px;
+      }
+
+      .side {
+        height: auto;
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+        border-left: 0;
+        border-top: 1px solid rgba(244, 247, 251, .14);
+        padding: 6px;
+        gap: 5px;
+      }
+
+      .title,
+      .actions,
+      .side > .panel:nth-of-type(5) {
+        display: none;
+      }
+
+      .status {
+        font-size: 12px;
+        line-height: 1.25;
+      }
+
+      .help-text {
+        display: none;
+      }
+
+      .panel {
+        padding: 6px;
+      }
+
+      .panel-title {
+        margin-bottom: 4px;
+        font-size: 11px;
+      }
+
+      .select-control {
+        min-height: 30px;
+        font-size: 14px;
+      }
+
+      .choice-grid {
+        gap: 5px;
+      }
+
+      .choice-button {
+        min-height: 30px;
+        font-size: 13px;
+      }
+
+      .romaji-answer {
+        grid-template-columns: minmax(0, 1fr) 74px;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 5px;
+      }
+
+      .input-display {
+        grid-column: 1 / -1;
+        min-height: 30px;
+        font-size: 21px;
+      }
+
+      .keys {
+        grid-column: 1;
+        grid-row: 2;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 5px;
+      }
+
+      .key {
+        min-height: 28px;
+        font-size: 14px;
+      }
+
+      .fire-button {
+        grid-column: 2;
+        grid-row: 2;
+        min-height: 100%;
+        writing-mode: vertical-rl;
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="stage" aria-label="ゲーム画面">
+      <canvas id="game" width="1000" height="760"></canvas>
+      <div class="hud" aria-live="polite">
+        <div class="hud-pill">
+          <span class="hud-label">スコア</span>
+          <span class="hud-value" id="score">0</span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">れんぞく</span>
+          <span class="hud-value" id="streak">0</span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label" id="goalLabel">もんだい</span>
+          <span class="hud-value" id="progress">0/0</span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">せいかい</span>
+          <span class="hud-value" id="accuracy">0%</span>
+        </div>
+      </div>
+      <div class="overlay" id="overlay">
+        <div class="dialog" id="dialog">
+          <h2 id="overlayTitle">ローマ字シューティング</h2>
+          <p id="overlayText">ひらがなを見て、ローマ字で入力しよう。</p>
+          <button class="fire-button" id="startButton" type="button">スタート</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="title">
+        <h1>ローマ字シューティング</h1>
+        <button class="small-button" id="pauseButton" type="button">一時停止</button>
+      </div>
+      <div class="status" id="status">モードを選んでスタートしてください。</div>
+      <div class="help-text">キーボードでローマ字を入力し、Enterキーを押しましょう。スマホでは画面のキーと発射ボタンを使えます。</div>
+
+      <section class="panel" aria-labelledby="mode-title">
+        <p class="panel-title" id="mode-title">モード</p>
+        <select class="select-control" id="modeSelect" aria-label="モード">
+          <optgroup label="レベル">
+            <option value="vowels">レベル1 あいうえお</option>
+            <option value="rows">レベル2 か行・さ行</option>
+            <option value="words">レベル3 単語</option>
+            <option value="yoon">レベル4 きゃ・しゅ・ちょ</option>
+            <option value="advanced">レベル5 がっこう・きって</option>
+          </optgroup>
+          <optgroup label="あそび">
+            <option value="mission">ミッションモード</option>
+          </optgroup>
+        </select>
+      </section>
+
+      <section class="panel" aria-labelledby="count-title">
+        <p class="panel-title" id="count-title">もんだいすう</p>
+        <div class="choice-grid" aria-label="もんだいすう">
+          <button class="choice-button active" data-count="10" type="button">10問</button>
+          <button class="choice-button" data-count="20" type="button">20問</button>
+          <button class="choice-button" data-count="30" type="button">30問</button>
+          <button class="choice-button" data-count="0" type="button">連続</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="speed-title">
+        <p class="panel-title" id="speed-title">らっかのはやさ</p>
+        <select class="select-control" id="fallSpeedSelect" aria-label="らっかのはやさ">
+          <option value="slow">ゆっくり</option>
+          <option value="normal" selected>ふつう</option>
+          <option value="fast">はやい</option>
+        </select>
+      </section>
+
+      <section class="panel romaji-answer" aria-labelledby="answer-title">
+        <p class="panel-title" id="answer-title">こたえ</p>
+        <div class="input-display empty" id="inputDisplay">romaji</div>
+        <div class="keys" aria-label="ローマ字キー" id="keypad"></div>
+        <button class="fire-button" id="fireButton" type="button">発射</button>
+      </section>
+
+      <section class="panel">
+        <p class="panel-title">作戦ログ</p>
+        <div class="message" id="message">例: 「いぬ」なら inu と入力します。</div>
+      </section>
+
+      <div class="actions">
+        <button class="small-button" id="restartButton" type="button">やりなおし</button>
+        <button class="small-button" id="hintButton" type="button">ヒント</button>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const streakEl = document.getElementById("streak");
+    const progressEl = document.getElementById("progress");
+    const accuracyEl = document.getElementById("accuracy");
+    const inputDisplay = document.getElementById("inputDisplay");
+    const statusEl = document.getElementById("status");
+    const messageEl = document.getElementById("message");
+    const overlay = document.getElementById("overlay");
+    const dialog = document.getElementById("dialog");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayText = document.getElementById("overlayText");
+    const startButton = document.getElementById("startButton");
+    const pauseButton = document.getElementById("pauseButton");
+    const restartButton = document.getElementById("restartButton");
+    const hintButton = document.getElementById("hintButton");
+    const fireButton = document.getElementById("fireButton");
+    const modeSelect = document.getElementById("modeSelect");
+    const fallSpeedSelect = document.getElementById("fallSpeedSelect");
+    const keypad = document.getElementById("keypad");
+    const countButtons = document.querySelectorAll("[data-count]");
+
+    const banks = {
+      vowels: [
+        ["あ", "a"], ["い", "i"], ["う", "u"], ["え", "e"], ["お", "o"]
+      ],
+      rows: [
+        ["か", "ka"], ["き", "ki"], ["く", "ku"], ["け", "ke"], ["こ", "ko"],
+        ["さ", "sa"], ["し", "shi"], ["す", "su"], ["せ", "se"], ["そ", "so"]
+      ],
+      words: [
+        ["いぬ", "inu"], ["さる", "saru"], ["うし", "ushi"], ["うさぎ", "usagi"],
+        ["ねこ", "neko"], ["とり", "tori"], ["くま", "kuma"], ["しか", "shika"]
+      ],
+      yoon: [
+        ["きゃ", "kya"], ["きゅ", "kyu"], ["きょ", "kyo"], ["しゅ", "shu"],
+        ["しょ", "sho"], ["ちょ", "cho"], ["にゃ", "nya"], ["りょ", "ryo"]
+      ],
+      advanced: [
+        ["きって", "kitte"], ["がっこう", "gakkou"], ["おおきい", "ookii"],
+        ["せんせい", "sensei"], ["ざっし", "zasshi"], ["きっぷ", "kippu"]
+      ]
+    };
+
+    const state = {
+      mode: "vowels",
+      fallSpeed: "normal",
+      input: "",
+      score: 0,
+      streak: 0,
+      total: 0,
+      correct: 0,
+      questionLimit: 10,
+      enemy: null,
+      missile: null,
+      particles: [],
+      stars: [],
+      running: false,
+      paused: false,
+      gameOver: false,
+      lastTime: 0
+    };
+
+    const fallSpeeds = {
+      slow: { label: "ゆっくり", multiplier: 0.7 },
+      normal: { label: "ふつう", multiplier: 1 },
+      fast: { label: "はやい", multiplier: 1.35 }
+    };
+
+    const audio = {
+      context: null,
+      tone(freq, duration, type = "sine", gain = 0.025) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        if (!this.context) this.context = new AudioContext();
+        if (this.context.state === "suspended") this.context.resume();
+        const osc = this.context.createOscillator();
+        const amp = this.context.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        amp.gain.value = gain;
+        osc.connect(amp);
+        amp.connect(this.context.destination);
+        osc.start();
+        amp.gain.exponentialRampToValueAtTime(0.0001, this.context.currentTime + duration);
+        osc.stop(this.context.currentTime + duration);
+      }
+    };
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      const narrow = window.matchMedia("(max-width: 860px)").matches;
+      canvas.width = Math.max(narrow ? 320 : 640, Math.floor(rect.width * scale));
+      canvas.height = Math.max(narrow ? 240 : 420, Math.floor(rect.height * scale));
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      seedStars();
+    }
+
+    function view() {
+      return {
+        width: canvas.width / (window.devicePixelRatio || 1),
+        height: canvas.height / (window.devicePixelRatio || 1)
+      };
+    }
+
+    function seedStars() {
+      const { width, height } = view();
+      state.stars = Array.from({ length: Math.floor(width * height / 9000) }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: Math.random() * 1.7 + 0.4,
+        speed: Math.random() * 12 + 8,
+        alpha: Math.random() * 0.55 + 0.28
+      }));
+    }
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function getBank() {
+      if (state.mode === "mission") return banks.words;
+      return banks[state.mode] || banks.vowels;
+    }
+
+    function makeEnemy() {
+      const { width, height } = view();
+      const bank = getBank();
+      const item = bank[rand(0, bank.length - 1)];
+      const size = Math.max(72, Math.min(116, height * 0.22));
+      const baseSpeed = 34;
+      state.enemy = {
+        kana: item[0],
+        romaji: item[1],
+        x: width * (0.24 + Math.random() * 0.52),
+        y: -size * 0.7,
+        size,
+        speed: baseSpeed * fallSpeeds[state.fallSpeed].multiplier,
+        targetY: height - Math.max(90, size * 1.25)
+      };
+      if (state.mode === "mission") {
+        statusEl.textContent = `${item[0]}を倒せ!`;
+      }
+    }
+
+    function resetGame() {
+      state.input = "";
+      state.score = 0;
+      state.streak = 0;
+      state.total = 0;
+      state.correct = 0;
+      state.enemy = null;
+      state.missile = null;
+      state.particles = [];
+      state.running = true;
+      state.paused = false;
+      state.gameOver = false;
+      dialog.classList.remove("master");
+      overlay.hidden = true;
+      startButton.textContent = "スタート";
+      pauseButton.textContent = "一時停止";
+      statusEl.textContent = state.mode === "mission" ? "先生のミッションを聞こう。" : "ひらがなをローマ字で入力してください。";
+      messageEl.innerHTML = "入力して発射。正解なら敵機を撃破します。";
+      updateInput();
+      updateHud();
+      makeEnemy();
+      state.lastTime = performance.now();
+    }
+
+    function updateHud() {
+      scoreEl.textContent = state.score;
+      streakEl.textContent = state.streak;
+      progressEl.textContent = state.questionLimit ? `${state.total}/${state.questionLimit}` : `${state.total}`;
+      accuracyEl.textContent = state.total ? `${Math.round(state.correct / state.total * 100)}%` : "0%";
+    }
+
+    function updateInput() {
+      inputDisplay.textContent = state.input || "romaji";
+      inputDisplay.classList.toggle("empty", state.input === "");
+    }
+
+    function addLetter(letter) {
+      if (!state.running || state.paused || state.gameOver) return;
+      if (state.input.length >= 12) return;
+      state.input += letter;
+      updateInput();
+    }
+
+    function backspace() {
+      state.input = state.input.slice(0, -1);
+      updateInput();
+    }
+
+    function clearInput() {
+      state.input = "";
+      updateInput();
+    }
+
+    function fire() {
+      if (!state.running || state.paused || state.gameOver || !state.enemy || state.missile) return;
+      if (!state.input) {
+        messageEl.textContent = "ローマ字を入力してから発射しよう。";
+        audio.tone(160, 0.08, "sine", 0.018);
+        return;
+      }
+      const { width, height } = view();
+      state.missile = {
+        x: width / 2,
+        y: height - 52,
+        tx: state.enemy.x,
+        ty: state.enemy.y,
+        progress: 0,
+        correct: state.input.toLowerCase() === state.enemy.romaji
+      };
+      audio.tone(620, 0.06, "square", 0.018);
+      clearInput();
+    }
+
+    function resolveShot(correct) {
+      if (!state.enemy) return;
+      state.total += 1;
+      if (correct) {
+        state.correct += 1;
+        state.streak += 1;
+        state.score += 10 + Math.min(20, state.streak * 2);
+        explode(state.enemy.x, state.enemy.y, "#ffcf5a");
+        audio.tone(420, 0.07, "triangle", 0.025);
+        setTimeout(() => audio.tone(680, 0.09, "triangle", 0.02), 60);
+        messageEl.innerHTML = `<strong>正解!</strong> ${state.enemy.kana} = ${state.enemy.romaji}`;
+        statusEl.textContent = "命中。次の敵機が来ます。";
+        state.enemy = null;
+        if (state.questionLimit && state.total >= state.questionLimit) {
+          finishTest();
+          return;
+        }
+        setTimeout(() => {
+          if (state.running && !state.gameOver) makeEnemy();
+        }, 420);
+      } else {
+        state.streak = 0;
+        messageEl.innerHTML = `<strong>ざんねん。</strong> ${state.enemy.kana} = ${state.enemy.romaji}`;
+        statusEl.textContent = "もう一度、次の問題にチャレンジ。";
+        audio.tone(150, 0.12, "sawtooth", 0.018);
+        explode(state.enemy.x, state.enemy.y, "#ff6666");
+        state.enemy = null;
+        if (state.questionLimit && state.total >= state.questionLimit) {
+          finishTest();
+          return;
+        }
+        setTimeout(() => {
+          if (state.running && !state.gameOver) makeEnemy();
+        }, 550);
+      }
+      updateHud();
+    }
+
+    function finishTest() {
+      const rate = state.total ? Math.round(state.correct / state.total * 100) : 0;
+      state.running = false;
+      state.gameOver = true;
+      dialog.classList.toggle("master", rate >= 90);
+      overlayTitle.textContent = rate >= 90 ? "ローマ字マスター!" : "けんてい終了";
+      overlayText.textContent = `${state.total}問中 ${state.correct}問正解、正答率${rate}%です。`;
+      startButton.textContent = "もう一度";
+      overlay.hidden = false;
+      statusEl.textContent = rate >= 90 ? "ローマ字マスター認定です。" : "90%以上をめざそう。";
+      audio.tone(rate >= 90 ? 740 : 360, 0.14, "triangle", 0.025);
+      updateHud();
+    }
+
+    function endGame(reason) {
+      state.running = false;
+      state.gameOver = true;
+      dialog.classList.remove("master");
+      overlayTitle.textContent = "ゲームオーバー";
+      overlayText.textContent = `${reason} スコアは ${state.score} 点です。`;
+      startButton.textContent = "もう一度";
+      overlay.hidden = false;
+      audio.tone(110, 0.16, "sawtooth", 0.018);
+    }
+
+    function explode(x, y, color) {
+      for (let i = 0; i < 36; i++) {
+        state.particles.push({
+          x, y,
+          vx: Math.cos(i) * rand(40, 170),
+          vy: Math.sin(i * 1.7) * rand(40, 170),
+          age: 0,
+          life: Math.random() * 0.4 + 0.35,
+          color
+        });
+      }
+    }
+
+    function update(delta) {
+      const { height } = view();
+      state.stars.forEach((star) => {
+        star.y += star.speed * delta;
+        if (star.y > height) star.y = -4;
+      });
+      state.particles = state.particles.filter((p) => {
+        p.age += delta;
+        p.x += p.vx * delta;
+        p.y += p.vy * delta;
+        p.vy += 150 * delta;
+        return p.age < p.life;
+      });
+      if (state.missile) {
+        state.missile.progress += delta * 4.3;
+        if (state.missile.progress >= 1) {
+          const correct = state.missile.correct;
+          state.missile = null;
+          resolveShot(correct);
+        }
+      }
+      if (state.enemy) {
+        state.enemy.y += state.enemy.speed * delta;
+        if (state.enemy.y > state.enemy.targetY) {
+          endGame("敵機を止められませんでした。");
+        }
+      }
+    }
+
+    function drawShip(x, y, size, enemy) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = enemy ? "#d85164" : "#e9eef6";
+      ctx.strokeStyle = "rgba(255,255,255,.72)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (enemy) {
+        ctx.moveTo(0, size * 0.42);
+        ctx.lineTo(-size * 0.52, -size * 0.05);
+        ctx.lineTo(-size * 0.16, -size * 0.24);
+        ctx.lineTo(0, -size * 0.42);
+        ctx.lineTo(size * 0.16, -size * 0.24);
+        ctx.lineTo(size * 0.52, -size * 0.05);
+      } else {
+        ctx.moveTo(0, -size * 0.55);
+        ctx.lineTo(-size * 0.22, size * 0.28);
+        ctx.lineTo(-size * 0.46, size * 0.5);
+        ctx.lineTo(-size * 0.18, size * 0.42);
+        ctx.lineTo(0, size * 0.6);
+        ctx.lineTo(size * 0.18, size * 0.42);
+        ctx.lineTo(size * 0.46, size * 0.5);
+        ctx.lineTo(size * 0.22, size * 0.28);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = enemy ? "#7a2635" : "#20b7a8";
+      ctx.beginPath();
+      ctx.ellipse(0, enemy ? -size * 0.02 : -size * 0.12, size * 0.17, size * 0.11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (!enemy) {
+        ctx.fillStyle = "#ffcf5a";
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.12, size * 0.48);
+        ctx.lineTo(0, size * 0.72);
+        ctx.lineTo(size * 0.12, size * 0.48);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function draw() {
+      const { width, height } = view();
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, "#11182a");
+      gradient.addColorStop(1, "#27364b");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      state.stars.forEach((star) => {
+        ctx.globalAlpha = star.alpha;
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      const rocketSize = Math.max(48, Math.min(76, height * 0.16));
+      const rocketY = height - Math.max(40, rocketSize * 0.92);
+      ctx.strokeStyle = "rgba(32, 183, 168, .18)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(width * 0.08, rocketY + rocketSize * 0.5);
+      ctx.lineTo(width * 0.92, rocketY + rocketSize * 0.5);
+      ctx.stroke();
+      drawShip(width / 2, rocketY, rocketSize, false);
+
+      if (state.enemy) {
+        drawShip(state.enemy.x, state.enemy.y, state.enemy.size, true);
+        const labelW = Math.max(92, state.enemy.size * 1.25);
+        const labelH = Math.max(34, state.enemy.size * 0.4);
+        ctx.fillStyle = "rgba(11, 14, 20, .82)";
+        ctx.strokeStyle = "rgba(255,255,255,.55)";
+        ctx.lineWidth = 2;
+        roundRect(state.enemy.x - labelW / 2, state.enemy.y - labelH / 2, labelW, labelH, 7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#f8fbff";
+        ctx.font = `900 ${Math.max(24, Math.min(34, state.enemy.size * 0.3))}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(state.enemy.kana, state.enemy.x, state.enemy.y + 2);
+      }
+
+      if (state.missile) {
+        const t = 1 - Math.pow(1 - Math.min(1, state.missile.progress), 3);
+        const x = state.missile.x + (state.missile.tx - state.missile.x) * t;
+        const y = state.missile.y + (state.missile.ty - state.missile.y) * t;
+        ctx.strokeStyle = state.missile.correct ? "#ffcf5a" : "#ff6666";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x, y + 18);
+        ctx.lineTo(x, y - 16);
+        ctx.stroke();
+      }
+
+      state.particles.forEach((p) => {
+        const alpha = 1 - p.age / p.life;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4 + alpha * 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function loop(time) {
+      const delta = Math.min(0.033, (time - state.lastTime) / 1000 || 0);
+      state.lastTime = time;
+      if (state.running && !state.paused && !state.gameOver) update(delta);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function buildKeypad() {
+      "abcdefghijklmnopqrstuvwxyz".split("").forEach((letter) => {
+        const button = document.createElement("button");
+        button.className = "key";
+        button.type = "button";
+        button.textContent = letter;
+        button.addEventListener("click", () => addLetter(letter));
+        keypad.appendChild(button);
+      });
+      [["C", clearInput], ["⌫", backspace]].forEach(([label, action]) => {
+        const button = document.createElement("button");
+        button.className = "key utility";
+        button.type = "button";
+        button.textContent = label;
+        button.addEventListener("click", action);
+        keypad.appendChild(button);
+      });
+    }
+
+    modeSelect.addEventListener("change", () => {
+      state.mode = modeSelect.value;
+      statusEl.textContent = "モードを変更しました。スタートで開始します。";
+    });
+
+    fallSpeedSelect.addEventListener("change", () => {
+      state.fallSpeed = fallSpeedSelect.value;
+      statusEl.textContent = `らっかのはやさを${fallSpeeds[state.fallSpeed].label}にしました。次の敵機から反映されます。`;
+    });
+
+    countButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        countButtons.forEach((b) => b.classList.remove("active"));
+        button.classList.add("active");
+        state.questionLimit = Number(button.dataset.count);
+        updateHud();
+        statusEl.textContent = state.questionLimit
+          ? `${state.questionLimit}問で正答率を出します。`
+          : "連続モードです。プレイ中の正答率を表示します。";
+      });
+    });
+
+    window.addEventListener("keydown", (event) => {
+      const key = event.key.toLowerCase();
+      if (/^[a-z]$/.test(key)) addLetter(key);
+      if (event.key === "Backspace") backspace();
+      if (event.key === "Delete") clearInput();
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        fire();
+      }
+    });
+
+    fireButton.addEventListener("click", fire);
+    startButton.addEventListener("click", resetGame);
+    restartButton.addEventListener("click", resetGame);
+    pauseButton.addEventListener("click", () => {
+      if (!state.running || state.gameOver) return;
+      state.paused = !state.paused;
+      pauseButton.textContent = state.paused ? "再開" : "一時停止";
+    });
+    hintButton.addEventListener("click", () => {
+      if (!state.enemy) return;
+      messageEl.innerHTML = `<strong>ヒント:</strong> ${state.enemy.kana} = ${state.enemy.romaji}`;
+    });
+    window.addEventListener("resize", resizeCanvas);
+    buildKeypad();
+    resizeCanvas();
+    updateHud();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
